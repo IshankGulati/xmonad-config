@@ -5,6 +5,7 @@
 import System.IO
 import System.Exit
 import XMonad
+import XMonad.Actions.SpawnOn
 import XMonad.Hooks.DynamicLog
 import XMonad.Hooks.ManageDocks
 import XMonad.Hooks.ManageHelpers
@@ -14,8 +15,10 @@ import XMonad.Layout.NoBorders
 import XMonad.Layout.Spiral
 import XMonad.Layout.Tabbed
 import XMonad.Layout.ThreeColumns
+import XMonad.Layout.Spacing
 import XMonad.Util.Run(spawnPipe)
 import XMonad.Util.EZConfig(additionalKeys)
+import XMonad.Util.Scratchpad
 import Graphics.X11.ExtraTypes.XF86
 import qualified XMonad.StackSet as W
 import qualified Data.Map        as M
@@ -26,10 +29,10 @@ import qualified Data.Map        as M
 -- The preferred terminal program, which is used in a binding below and by
 -- certain contrib modules.
 --
-myTerminal = "/usr/bin/gnome-terminal"
+myTerminal = "/usr/bin/terminator -p ishank"
 
 -- The command to lock the screen or show the screensaver.
-myScreensaver = "/usr/bin/gnome-screensaver-command --lock"
+myScreensaver = "~/.xmonad/lock.sh ~/.xmonad/lock.png"
 
 -- The command to take a selective screenshot, where you select
 -- what you'd like to capture on the screen.
@@ -47,7 +50,7 @@ myLauncher = "$(yeganesh -x -- -fn '-*-terminus-*-r-normal-*-*-120-*-*-*-*-iso88
 -- Workspaces
 -- The default number of workspaces (virtual screens) and their names.
 --
-myWorkspaces = ["1:term","2:web","3:code","4:vm","5:media"] ++ map show [6..9]
+myWorkspaces = ["1:term","2:web","3:code","4:postman","5:mysql", "6:chat"] ++ map show [7..9]
 
 
 ------------------------------------------------------------------------
@@ -64,20 +67,35 @@ myWorkspaces = ["1:term","2:web","3:code","4:vm","5:media"] ++ map show [6..9]
 -- To match on the WM_NAME, you can use 'title' in the same way that
 -- 'className' and 'resource' are used below.
 --
-myManageHook = composeAll
+myManageHook' = composeAll
     [ className =? "Chromium"       --> doShift "2:web"
     , className =? "Google-chrome"  --> doShift "2:web"
+    , className =? "Emacs"          --> doShift "3:code"
+    , className =? "jetbrains-idea-ce" --> doShift "3:code"
+    , className =? "Code"           --> doShift "3:code"
+    , className =? "Postman"        --> doShift "4:postman"
+    , className =? "Mysql-workbench-bin"--> doShift "5:mysql"
     , resource  =? "desktop_window" --> doIgnore
     , className =? "Galculator"     --> doFloat
     , className =? "Steam"          --> doFloat
     , className =? "Gimp"           --> doFloat
     , resource  =? "gpicview"       --> doFloat
     , className =? "MPlayer"        --> doFloat
-    , className =? "VirtualBox"     --> doShift "4:vm"
-    , className =? "Xchat"          --> doShift "5:media"
+    , className =? "albert"         --> doFloat
+    , className =? "Slack"          --> doShift "6:chat"
     , className =? "stalonetray"    --> doIgnore
     , isFullscreen --> (doF W.focusDown <+> doFullFloat)]
 
+manageScratchPad :: ManageHook
+manageScratchPad = scratchpadManageHook (W.RationalRect l t w h)
+  where
+    h = 0.3     -- terminal height, 30%
+    w = 1       -- terminal width, 100%
+    t = 1 - h   -- distance from top edge, 70%
+    l = 1 - w   -- distance from left edge, 0%
+
+myManageHook = myManageHook' <+> manageScratchPad
+scratchPad = scratchpadSpawnActionTerminal "urxvt"
 
 ------------------------------------------------------------------------
 -- Layouts
@@ -89,7 +107,7 @@ myManageHook = composeAll
 -- The available layouts.  Note that each layout is separated by |||,
 -- which denotes layout choice.
 --
-myLayout = avoidStruts (
+myLayout = spacing 2 $ avoidStruts (
     ThreeColMid 1 (3/100) (1/2) |||
     Tall 1 (3/100) (1/2) |||
     Mirror (Tall 1 (3/100) (1/2)) |||
@@ -123,7 +141,7 @@ xmobarTitleColor = "#FFB6B0"
 xmobarCurrentWorkspaceColor = "#CEFFAC"
 
 -- Width of the window border in pixels.
-myBorderWidth = 1
+myBorderWidth = 4
 
 
 ------------------------------------------------------------------------
@@ -134,7 +152,7 @@ myBorderWidth = 1
 -- ("right alt"), which does not conflict with emacs keybindings. The
 -- "windows key" is usually mod4Mask.
 --
-myModMask = mod1Mask
+myModMask = mod4Mask
 
 myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
   ----------------------------------------------------------------------
@@ -143,7 +161,7 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 
   -- Start a terminal.  Terminal to start is specified by myTerminal variable.
   [ ((modMask .|. shiftMask, xK_Return),
-     spawn $ XMonad.terminal conf)
+     spawn myTerminal)
 
   -- Lock the screen using command specified by myScreensaver.
   , ((modMask .|. controlMask, xK_l),
@@ -273,6 +291,10 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
   -- Toggle the status bar gap.
   -- TODO: update this binding with avoidStruts, ((modMask, xK_b),
 
+  -- scratchpad
+  , ((modMask .|. shiftMask, xK_n),
+     scratchPad)
+
   -- Quit xmonad.
   , ((modMask .|. shiftMask, xK_q),
      io (exitWith ExitSuccess))
@@ -341,8 +363,16 @@ myMouseBindings (XConfig {XMonad.modMask = modMask}) = M.fromList $
 -- per-workspace layout choices.
 --
 -- By default, do nothing.
-myStartupHook = return ()
-
+myStartupHook :: X ()
+myStartupHook = do
+--  spawn "xrandr --output eDP1 --dpi 227"
+  spawn "compton"
+  spawn "feh --bg-scale ~/Pictures/monody.jpg"
+  spawnOn "2:web" "chromium"
+  spawnOn "4:postman" "postman"
+  spawnOn "5:mysql" "mysql-workbench"
+  spawnOn "6:chat" "slack"
+  spawn "QT_SCALE_FACTOR=2 albert"
 
 ------------------------------------------------------------------------
 -- Run xmonad with all the defaults we set up.
@@ -357,7 +387,9 @@ main = do
           , ppSep = "   "
       }
       , manageHook = manageDocks <+> myManageHook
-      , startupHook = setWMName "LG3D"
+      , layoutHook = avoidStruts $ layoutHook defaults
+      , handleEventHook = handleEventHook defaults <+> docksEventHook
+      , startupHook = myStartupHook >> setWMName "LG3D"
   }
 
 
