@@ -4,7 +4,7 @@
 
 -- This is setup for dual 1920x1080 monitors, with the right monitor as primary
 Config {
-    font = "xft:MesloLGM:size=12:antialias=true",
+    font = "xft:MesloLGM:size=11:antialias=true",
     bgColor = "#000000",
     fgColor = "#ffffff",
     position = Static { xpos = 0, ypos = 0, width = 2560, height = 40 },

@@ -83,6 +83,7 @@ myManageHook' = composeAll
     , className =? "MPlayer"        --> doFloat
     , className =? "albert"         --> doFloat
     , className =? "Slack"          --> doShift "6:chat"
+    , className =? "Mattermost"          --> doShift "6:chat"
     , className =? "stalonetray"    --> doIgnore
     , isFullscreen --> (doF W.focusDown <+> doFullFloat)]
 
@@ -368,10 +369,10 @@ myStartupHook = do
 --  spawn "xrandr --output eDP1 --dpi 227"
   spawn "compton"
   spawn "feh --bg-scale ~/Pictures/monody.jpg"
-  spawnOn "2:web" "chromium"
+  spawnOn "2:web" "google-chrome-stable"
   spawnOn "4:postman" "postman"
   spawnOn "5:mysql" "mysql-workbench"
-  spawnOn "6:chat" "slack"
+  spawnOn "6:chat" "mattermost-desktop"
   spawn "QT_SCALE_FACTOR=2 albert"
 
 ------------------------------------------------------------------------
